@@ -21,16 +21,12 @@ const GREETINGS = [
 const MARQUEE_ITEMS = [
   "𑁍 Did you know? Vamanan is the only avatar of Vishnu who conquers without a weapon — just a request.",
   "𑁍 Onam tip: The Pookkalam grows one ring every day for 10 days, from Atham to Thiruvonam.",
-  "𑁍 Movie joke: \"Onam-inu Sadya-ayi nalla paniyaram undakki, pakshe appachan-nte ammamar vannilla!\" — The tragedy of cooking for guests who never arrive.",
   "𑁍 Fact: Thrikkakara Temple in Kochi is believed to be the exact spot where Vamanan received Mahabali's offering.",
   "𑁍 Tip: A traditional Sadya has 20+ dishes served on a banana leaf — always eaten with the hands, seated on the floor.",
-  "𑁍 Movie joke: \"Vamanan-adipoli aanu, pakshe sequel-undo?\" — Even the gods wonder about part two.",
   "𑁍 Fact: The word 'Vamana' means 'dwarf' in Sanskrit — the infinite choosing to be called the smallest.",
   "𑁍 Onam tip: Marigold (jamanthi) is the most used flower in Pookkalams — its bright orange symbolizes the sun.",
-  "𑁍 Movie joke: \"Pulikali-ku paint cheyyan 4 manikooru venam, pakshe wash cheyyan 2 divasam venam!\" — The tiger takes hours to paint and days to wash off.",
   "𑁍 Fact: Mahabali was so beloved that even today Keralites sing 'Maveli Naadu Vaneedum Kalam' — a song about his golden reign.",
   "𑁍 Tip: During Vallamkali, a single chundan boat can carry 100+ rowers rowing in perfect unison.",
-  "𑁍 Movie joke: \"Onam-ashamsakal! Nalla sadya, nalla pookkalam, pakshe nalla leave illa!\" — Great feast, great flowers, but no holiday!",
 ];
 
 function VamananAvatar({ size = 56, thinking = false }) {
@@ -363,8 +359,8 @@ export default function App() {
   const [lastAnimIdx, setLastAnimIdx] = useState(-1);
   const [isResetting, setIsResetting] = useState(false);
   const [musicOn, setMusicOn] = useState(false);
-  const audioCtxRef = useRef(null);
-  const audioNodesRef = useRef(null);
+  const [mobilePookkalam, setMobilePookkalam] = useState(false);
+  const audioRef = useRef(null);
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -408,65 +404,19 @@ export default function App() {
   };
 
   const toggleMusic = useCallback(() => {
-    if (!audioCtxRef.current) {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      audioCtxRef.current = ctx;
-      const masterGain = ctx.createGain();
-      masterGain.gain.value = 0;
-      masterGain.connect(ctx.destination);
-
-      const notes = [261.63, 329.63, 392.00, 440.00];
-      const oscillators = [];
-      notes.forEach((freq, i) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = "sine";
-        osc.frequency.value = freq;
-        gain.gain.value = 0;
-        osc.connect(gain);
-        gain.connect(masterGain);
-        osc.start();
-        oscillators.push({ osc, gain });
-      });
-
-      const lfo = ctx.createOscillator();
-      const lfoGain = ctx.createGain();
-      lfo.frequency.value = 0.15;
-      lfoGain.gain.value = 0.06;
-      lfo.connect(lfoGain);
-      lfoGain.connect(masterGain.gain);
-      lfo.start();
-
-      const melodyLfo = ctx.createOscillator();
-      const melodyGain = ctx.createGain();
-      melodyLfo.frequency.value = 0.08;
-      melodyGain.gain.value = 0.04;
-      melodyLfo.connect(melodyGain);
-      oscillators.forEach(({ gain }) => melodyGain.connect(gain.gain));
-      melodyLfo.start();
-
-      audioNodesRef.current = { masterGain, oscillators, lfo, melodyLfo };
+    if (!audioRef.current) {
+      audioRef.current = new Audio(`${import.meta.env.BASE_URL}onam_evergreen_tune.mp3`);
+      audioRef.current.loop = true;
+      audioRef.current.volume = 0.4;
     }
-
-    const ctx = audioCtxRef.current;
-    const { masterGain } = audioNodesRef.current;
-    if (!musicOn) {
-      ctx.resume();
-      masterGain.gain.cancelScheduledValues(ctx.currentTime);
-      masterGain.gain.setValueAtTime(masterGain.gain.value, ctx.currentTime);
-      masterGain.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 2);
-      setMusicOn(true);
-    } else {
-      masterGain.gain.cancelScheduledValues(ctx.currentTime);
-      masterGain.gain.setValueAtTime(masterGain.gain.value, ctx.currentTime);
-      masterGain.gain.linearRampToValueAtTime(0, ctx.currentTime + 1);
+    if (musicOn) {
+      audioRef.current.pause();
       setMusicOn(false);
+    } else {
+      audioRef.current.play().catch(() => {});
+      setMusicOn(true);
     }
   }, [musicOn]);
-
-  useEffect(() => () => {
-    if (audioCtxRef.current) audioCtxRef.current.close();
-  }, []);
 
   const resetChat = useCallback(async () => {
     if (isResetting || !conversationId) return;
@@ -520,23 +470,14 @@ export default function App() {
           {hoverGreeting && <div className="nav-greeting-bubble">{hoverGreeting}</div>}
         </div>
         <div className="nav-actions">
-          <button className={`nav-action-btn music-btn ${musicOn ? "playing" : ""}`} onClick={toggleMusic} title="Toggle Onam music">
-            <span className="music-icon">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                {musicOn ? (
-                  <><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></>
-                ) : (
-                  <><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /><line x1="2" y1="2" x2="22" y2="22" /></>
-                )}
-              </svg>
-            </span>
-            <span>{musicOn ? "Mute" : "Music"}</span>
-          </button>
           <button className="nav-action-btn reset-btn" onClick={resetChat} disabled={isResetting || !memoryReady} title="Reset chat">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /></svg>
             <span>Reset</span>
           </button>
-          <button className="sidebar-toggle" onClick={() => setShowSidebar((s) => !s)}>
+          <button className="sidebar-toggle" onClick={() => {
+            if (window.innerWidth <= 700) { setMobilePookkalam(true); }
+            else { setShowSidebar((s) => !s); }
+          }}>
             {showSidebar ? "Hide Pookkalam" : "Show Pookkalam"}
           </button>
         </div>
@@ -573,27 +514,82 @@ export default function App() {
         )}
         {showSidebar && <div className="sidebar-divider" />}
 
-        <main ref={scrollRef} className="festive-scroll scrollbar">
-          <div className="festive-container">
-            {!hasStarted && (
-              <div className="festive-hero">
-                <span className="hero-tag">Ponnonam · Kerala 2026</span>
-                <h1 className="hero-heading">Where the smallest <span>step</span> holds the world.</h1>
-                <p className="hero-text">Explore the lore of Mahabali, the cadence of old songs, and the traditions of Kerala. Ask anything — on-topic or off. Vamanan answers with story, wit, and honesty.</p>
-                <div className="starter-pills">
-                  {STARTERS.map((s) => (
-                    <button key={s.query} className="starter-pill" onClick={() => send(s.query)}>
-                      <span className="pill-emoji">{s.emoji}</span><span className="pill-label">{s.label}</span>
-                    </button>
+        <div className="chat-column">
+          <main ref={scrollRef} className="festive-scroll scrollbar">
+            <div className="festive-container">
+              {!hasStarted && (
+                <div className="festive-hero">
+                  <span className="hero-tag">Ponnonam · Kerala 2026</span>
+                  <h1 className="hero-heading">Where the smallest <span>step</span> holds the world.</h1>
+                  <p className="hero-text">Explore the lore of Mahabali, the cadence of old songs, and the traditions of Kerala. Ask anything — on-topic or off. Vamanan answers with story, wit, and honesty.</p>
+                  <div className="starter-pills">
+                    {STARTERS.map((s) => (
+                      <button key={s.query} className="starter-pill" onClick={() => send(s.query)}>
+                        <span className="pill-emoji">{s.emoji}</span><span className="pill-label">{s.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {messages.map((m, idx) => <Message key={idx} msg={m} onFollowup={send} animate={idx === lastAnimIdx} />)}
+              {isThinking && <TypingDots />}
+            </div>
+          </main>
+
+          <footer className="festive-footer">
+            <div className="kasavu-border-bottom" />
+            <div className="festive-input-wrap">
+              <textarea ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
+                placeholder="Chodikkumbol ellam parayam... (Ask anything)" rows={1} />
+              <button className={`festive-send ${input.trim() && !isThinking ? "active" : ""}`} onClick={() => send()} disabled={!input.trim() || isThinking || !memoryReady}>
+                <OllaKudaIcon size={20} />
+              </button>
+            </div>
+            <div className="composer-note">By: Kareena Alexander</div>
+          </footer>
+        </div>
+      </div>
+
+      <button className={`floating-music ${musicOn ? "playing" : ""}`} onClick={toggleMusic} title="Toggle Onam music">
+        <span className="music-wave">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            {musicOn ? (
+              <><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></>
+            ) : (
+              <><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /><line x1="3" y1="3" x2="21" y2="21" /></>
+            )}
+          </svg>
+        </span>
+        <span className="music-label">{musicOn ? "Mute Onam Music" : "Play Onam Music"}</span>
+      </button>
+
+      {mobilePookkalam && (
+        <>
+          <div className="mobile-drawer-overlay" onClick={() => setMobilePookkalam(false)} />
+          <div className="mobile-drawer scrollbar">
+            <button className="mobile-drawer-close" onClick={() => setMobilePookkalam(false)}>×</button>
+            <div className="sidebar-card">
+              <h3 className="sidebar-title">Pookkalam <span className="malayalam-text">പൂക്കളം</span></h3>
+              <p className="sidebar-desc">Spin the Pookkalam. Click a petal for Onam trivia.</p>
+              <SpinningPookkalam onSegmentClick={(seg) => { setTriviaCard(seg); }} />
+            </div>
+            <div className="sidebar-card blessing-card">
+              <h3 className="sidebar-title">Maveli's Blessing Counter</h3>
+              <div className="blessing-vessel" onClick={() => setPetalTrigger((t) => t + 1)} style={{ cursor: "pointer" }}>
+                <div className="rice-grains">
+                  {Array.from({ length: Math.min(blessingCount, 30) }).map((_, i) => (
+                    <span key={i} className="rice-grain" style={{ animationDelay: `${i * 0.05}s` }} />
                   ))}
                 </div>
+                <div className="blessing-count">{blessingCount}</div>
+                <div className="blessing-label">{blessingCount === 1 ? "blessing given" : "blessings given"}</div>
+                <div className="blessing-tap-hint">Tap for petals</div>
               </div>
-            )}
-            {messages.map((m, idx) => <Message key={idx} msg={m} onFollowup={send} animate={idx === lastAnimIdx} />)}
-            {isThinking && <TypingDots />}
+            </div>
           </div>
-        </main>
-      </div>
+        </>
+      )}
 
       {triviaCard && (
         <div className="trivia-overlay" onClick={() => setTriviaCard(null)}>
@@ -605,19 +601,6 @@ export default function App() {
           </div>
         </div>
       )}
-
-      <footer className="festive-footer">
-        <div className="kasavu-border-bottom" />
-        <div className="festive-input-wrap">
-          <textarea ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-            placeholder="Chodikkumbol ellam parayam... (Ask anything)" rows={1} />
-          <button className={`festive-send ${input.trim() && !isThinking ? "active" : ""}`} onClick={() => send()} disabled={!input.trim() || isThinking || !memoryReady}>
-            <OllaKudaIcon size={20} />
-          </button>
-        </div>
-        <div className="composer-note">Vamanan speaks from tradition, not certainty · Your conversation is remembered</div>
-      </footer>
     </div>
   );
 }
